@@ -68,6 +68,8 @@ namespace S7CommPlusDriver
 
         private List<DatablockInfo> dbInfoList;
         private List<PObject> typeInfoList = new List<PObject>();
+        // PLC-Monitor: native areas the CPU does not have (e.g. S7 timers/counters on an S7-1200).
+        private readonly HashSet<uint> unavailableAreaTypeInfo = new HashSet<uint>();
         #endregion
 
         #region Public Members
@@ -1206,6 +1208,7 @@ namespace S7CommPlusDriver
             m_IntegrityId_Set = 0;
             dbInfoList = null;
             typeInfoList.Clear();
+            unavailableAreaTypeInfo.Clear();
             m_ReceivedPDUs.Complete();
             m_ReceivedPDUs = CreateReceiveQueue();
             m_client = new S7Client();
@@ -1454,6 +1457,7 @@ namespace S7CommPlusDriver
                 m_LegacySessionKey = null;
                 dbInfoList = null;
                 typeInfoList.Clear();
+                unavailableAreaTypeInfo.Clear();
             }
 
             return res;
@@ -1496,6 +1500,7 @@ namespace S7CommPlusDriver
                 m_LegacySessionKey = null;
                 dbInfoList = null;
                 typeInfoList.Clear();
+                unavailableAreaTypeInfo.Clear();
             }
         }
 
@@ -2712,38 +2717,56 @@ namespace S7CommPlusDriver
             }
             else
             {
-                symbol = varInfo.Name;
-                // Merker
-                varInfo.AccessSequence = String.Format("{0:X}", Ids.NativeObjects_theMArea_Rid);
-                varInfo.SymbolCrcPath.Clear();
-                PlcTag tag = browsePlcTagBySymbol(0x90030000, ref symbol, varInfo);
+                // PLC-Monitor: an area the CPU does not have is skipped instead of aborting the lookup.
+                // The S7-1200 has no S7 timer/counter areas; requesting their type info failed with
+                // "Could not get type info" and every unknown first-level name became a session error.
+                PlcTag tag = browseAreaBySymbol(0x90030000, Ids.NativeObjects_theMArea_Rid, ref symbol, varInfo); // Merker
                 if (tag != null) return tag;
-                symbol = varInfo.Name;
-                // Outputs
-                varInfo.AccessSequence = String.Format("{0:X}", Ids.NativeObjects_theQArea_Rid);
-                varInfo.SymbolCrcPath.Clear();
-                tag = browsePlcTagBySymbol(0x90020000, ref symbol, varInfo);
+                tag = browseAreaBySymbol(0x90020000, Ids.NativeObjects_theQArea_Rid, ref symbol, varInfo); // Outputs
                 if (tag != null) return tag;
-                symbol = varInfo.Name;
-                // Inputs
-                varInfo.AccessSequence = String.Format("{0:X}", Ids.NativeObjects_theIArea_Rid);
-                varInfo.SymbolCrcPath.Clear();
-                tag = browsePlcTagBySymbol(0x90010000, ref symbol, varInfo);
+                tag = browseAreaBySymbol(0x90010000, Ids.NativeObjects_theIArea_Rid, ref symbol, varInfo); // Inputs
                 if (tag != null) return tag;
-                symbol = varInfo.Name;
-                // S7 timers
-                varInfo.AccessSequence = String.Format("{0:X}", Ids.NativeObjects_theS7Timers_Rid);
-                varInfo.SymbolCrcPath.Clear();
-                tag = browsePlcTagBySymbol(0x90050000, ref symbol, varInfo);
+                tag = browseAreaBySymbol(0x90050000, Ids.NativeObjects_theS7Timers_Rid, ref symbol, varInfo); // S7 timers
                 if (tag != null) return tag;
-                symbol = varInfo.Name;
-                // S7 counters
-                varInfo.AccessSequence = String.Format("{0:X}", Ids.NativeObjects_theS7Counters_Rid);
-                varInfo.SymbolCrcPath.Clear();
-                tag = browsePlcTagBySymbol(0x90060000, ref symbol, varInfo);
+                tag = browseAreaBySymbol(0x90060000, Ids.NativeObjects_theS7Counters_Rid, ref symbol, varInfo); // S7 counters
                 if (tag != null) return tag;
             }
             return null;
+        }
+
+        /// <summary>
+        /// PLC-Monitor: looks the full symbol up in one native area (M, Q, I, timers, counters).
+        /// Returns null when the symbol is not there or the CPU does not have that area.
+        /// </summary>
+        private PlcTag browseAreaBySymbol(uint areaTiRelid, uint areaRid, ref string symbol, VarInfo varInfo)
+        {
+            symbol = varInfo.Name;
+            varInfo.AccessSequence = String.Format("{0:X}", areaRid);
+            varInfo.SymbolCrcPath.Clear();
+            if (unavailableAreaTypeInfo.Contains(areaTiRelid))
+            {
+                return null;
+            }
+            if (typeInfoList.Find(ti => ti.RelationId == areaTiRelid) == null)
+            {
+                int res = GetTypeInformation(areaTiRelid, out var newPObj);
+                if (res != 0)
+                {
+                    if (S7CommPlusErrorClassifier.IsTransient(res) || m_client == null || !m_client.Connected)
+                    {
+                        throw new Exception("Could not get type info");
+                    }
+                    unavailableAreaTypeInfo.Add(areaTiRelid);
+                    return null;
+                }
+                typeInfoList.AddRange(newPObj);
+                if (typeInfoList.Find(ti => ti.RelationId == areaTiRelid) == null)
+                {
+                    unavailableAreaTypeInfo.Add(areaTiRelid);
+                    return null;
+                }
+            }
+            return browsePlcTagBySymbol(areaTiRelid, ref symbol, varInfo);
         }
 
         public class BrowseEntry
