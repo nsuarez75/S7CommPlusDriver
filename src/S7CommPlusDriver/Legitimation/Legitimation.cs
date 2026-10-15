@@ -226,10 +226,12 @@ namespace S7CommPlusDriver
                 m_client.Disconnect();
                 return S7Consts.errIsoInvalidPDU;
             }
-            // Check if the legitimation attempt was successful
-            Int16 errorCode = (Int16)setVariableResponse.ReturnValue;
-            if (errorCode < 0)
+            // Check if the legitimation attempt was successful.
+            // PLC-Monitor: any non-zero ReturnValue is a rejection. The former (Int16) cast truncated
+            // e.g. 0x2605990006990016 (wrong password on an S7-1517F) to 0x0016 > 0 and accepted it.
+            if (setVariableResponse.ReturnValue != 0)
             {
+                System.Diagnostics.Trace.WriteLine("S7CommPlusProtocolSession - Legitimate: ReturnValue=0x" + setVariableResponse.ReturnValue.ToString("X16"));
                 System.Diagnostics.Trace.WriteLine("S7CommPlusProtocolSession - Legitimate: access denied");
                 m_client.Disconnect();
                 return S7Consts.errCliAccessDenied;
@@ -345,10 +347,12 @@ namespace S7CommPlusDriver
                 m_client.Disconnect();
                 return S7Consts.errIsoInvalidPDU;
             }
-            // Check if the legitimation attempt was successful
-            Int16 errorCode = (Int16)setVariableResponse.ReturnValue;
-            if (errorCode < 0)
+            // Check if the legitimation attempt was successful.
+            // PLC-Monitor: any non-zero ReturnValue is a rejection. The former (Int16) cast truncated
+            // e.g. 0x2605990006990016 (wrong password on an S7-1517F) to 0x0016 > 0 and accepted it.
+            if (setVariableResponse.ReturnValue != 0)
             {
+                System.Diagnostics.Trace.WriteLine("S7CommPlusProtocolSession - Legitimate: ReturnValue=0x" + setVariableResponse.ReturnValue.ToString("X16"));
                 System.Diagnostics.Trace.WriteLine("S7CommPlusProtocolSession - Legitimate: access denied");
                 m_client.Disconnect();
                 return S7Consts.errCliAccessDenied;
