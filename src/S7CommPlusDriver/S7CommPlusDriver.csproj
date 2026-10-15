@@ -25,7 +25,8 @@
     <PackageReference Include="PolySharp" Version="1.16.0" PrivateAssets="all" />
     <PackageReference Include="System.Memory" Version="4.6.3" />
   </ItemGroup>
-  <ItemGroup>
+  <!-- PLC-Monitor: S7CommPlusIncludeOpenSslRuntimes=false leaves out the native OpenSSL files (only needed by the OpenSsl TLS backend). -->
+  <ItemGroup Condition="'$(S7CommPlusIncludeOpenSslRuntimes)' != 'false'">
     <Content Include="runtimes\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Pack>true</Pack>
