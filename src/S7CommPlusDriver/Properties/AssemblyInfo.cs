@@ -9,4 +9,7 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("S7CommPlusDriver.Tests")]
 [assembly: InternalsVisibleTo("DriverTest")]
 [assembly: InternalsVisibleTo("S7CommPlusGUIBrowser")]
+// PLC-Monitor: el driver s7-symbolic crea tags por tipo (PlcTags.TagFactory) para mapear tipos y en sus tests.
+[assembly: InternalsVisibleTo("PlcMonitor.Drivers.S7Symbolic")]
+[assembly: InternalsVisibleTo("PlcMonitor.Drivers.S7Symbolic.Tests")]
 #endif
