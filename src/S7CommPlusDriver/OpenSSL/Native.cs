@@ -84,7 +84,10 @@ namespace OpenSsl
 
         private static string RuntimeNativePath(Assembly assembly, string runtimeIdentifier, string fileName)
         {
-            var assemblyDirectory = Path.GetDirectoryName(assembly.Location);
+            // PLC-Monitor: in a single-file app Assembly.Location is empty; the native files sit beside the executable.
+#pragma warning disable IL3000 // Single-file case (empty Location) is handled right here.
+            var assemblyDirectory = string.IsNullOrEmpty(assembly.Location) ? AppContext.BaseDirectory : Path.GetDirectoryName(assembly.Location);
+#pragma warning restore IL3000
             if (string.IsNullOrEmpty(assemblyDirectory))
             {
                 return Path.Combine("runtimes", runtimeIdentifier, "native", fileName);
