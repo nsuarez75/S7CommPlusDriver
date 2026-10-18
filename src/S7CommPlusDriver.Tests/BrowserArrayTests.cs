@@ -162,6 +162,23 @@ namespace S7CommPlusDriver.Tests
         }
 
         [Fact]
+        public void AreaTagsBrowseWithoutTheAreaName()
+        {
+            const uint markerTypeRelationId = 0x90030000;
+            var markerType = CreateTypeObject(markerTypeRelationId, "x", Softdatatype.S7COMMP_SOFTDATATYPE_BOOL, new POffsetInfoType_Std());
+
+            var browser = new Browser(expandPrimitiveArrayElements: false);
+            browser.AddBlockNode(eNodeType.Root, "", Ids.NativeObjects_theMArea_Rid, markerTypeRelationId);
+            browser.SetTypeInfoContainerObjects(new List<PObject> { markerType });
+            browser.BuildTree();
+            browser.BuildFlatList();
+
+            var variable = Assert.Single(browser.GetVarInfoList());
+            Assert.Equal("x", variable.Name);
+            Assert.Equal("52.2A", variable.AccessSequence);
+        }
+
+        [Fact]
         public void DtlArrayRemainsAnOpaqueAggregateDespiteItsTypeRelation()
         {
             const uint rootTypeRelationId = 100;

@@ -1945,11 +1945,13 @@ namespace S7CommPlusDriver
             }
 
             // Add IQMCT areas manually
-            vars.AddBlockNode(eNodeType.Root, "IArea", Ids.NativeObjects_theIArea_Rid, 0x90010000);
-            vars.AddBlockNode(eNodeType.Root, "QArea", Ids.NativeObjects_theQArea_Rid, 0x90020000);
-            vars.AddBlockNode(eNodeType.Root, "MArea", Ids.NativeObjects_theMArea_Rid, 0x90030000);
-            vars.AddBlockNode(eNodeType.Root, "S7Timers", Ids.NativeObjects_theS7Timers_Rid, 0x90050000);
-            vars.AddBlockNode(eNodeType.Root, "S7Counters", Ids.NativeObjects_theS7Counters_Rid, 0x90060000);
+            // PLC-Monitor: the areas get no name, so their tags browse as in TIA ("x", not "MArea.x"),
+            // which is the symbol getPlcTagBySymbol looks up.
+            vars.AddBlockNode(eNodeType.Root, "", Ids.NativeObjects_theIArea_Rid, 0x90010000);
+            vars.AddBlockNode(eNodeType.Root, "", Ids.NativeObjects_theQArea_Rid, 0x90020000);
+            vars.AddBlockNode(eNodeType.Root, "", Ids.NativeObjects_theMArea_Rid, 0x90030000);
+            vars.AddBlockNode(eNodeType.Root, "", Ids.NativeObjects_theS7Timers_Rid, 0x90050000);
+            vars.AddBlockNode(eNodeType.Root, "", Ids.NativeObjects_theS7Counters_Rid, 0x90060000);
 
             #endregion
 
@@ -2717,6 +2719,11 @@ namespace S7CommPlusDriver
             }
             else
             {
+                // PLC-Monitor: older browse results named the area as first level ("MArea.x"); the CPU only knows "x".
+                if (AreaPrefixes.Contains(levelName) && symbol.Length > 0)
+                {
+                    varInfo.Name = symbol;
+                }
                 // PLC-Monitor: an area the CPU does not have is skipped instead of aborting the lookup.
                 // The S7-1200 has no S7 timer/counter areas; requesting their type info failed with
                 // "Could not get type info" and every unknown first-level name became a session error.
@@ -2733,6 +2740,12 @@ namespace S7CommPlusDriver
             }
             return null;
         }
+
+        /// <summary>PLC-Monitor: first levels that older browse results put in front of area tags.</summary>
+        private static readonly HashSet<string> AreaPrefixes = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "IArea", "QArea", "MArea", "S7Timers", "S7Counters",
+        };
 
         /// <summary>
         /// PLC-Monitor: looks the full symbol up in one native area (M, Q, I, timers, counters).

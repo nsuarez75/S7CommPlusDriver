@@ -85,6 +85,9 @@ namespace S7CommPlusDriver
             }
         }
 
+        /// <summary>PLC-Monitor: appends a member name; under an unnamed root (I/Q/M areas) there is no leading dot.</summary>
+        private static string JoinName(string names, string name) => names.Length == 0 ? name : names + "." + name;
+
         /// <summary>
         /// Flattens one symbol-tree branch and carries effective HMI permissions from every containing member to its leaves.
         /// A leaf cannot be visible or accessible when any structure or array on its PLC path disables that capability.
@@ -135,7 +138,7 @@ namespace S7CommPlusDriver
                     nextCrcPath = ReplaceLastCrcSegmentWithArray(node, crcPath);
                     break;
                 case eNodeType.PrimitiveArray:
-                    names += "." + node.Name;
+                    names = JoinName(names, node.Name);
                     accessIds += "." + String.Format("{0:X}", node.AccessId);
                     nextCrcPath = new List<S7CommPlusSymbolCrc.PathSegment>(crcPath)
                     {
@@ -146,7 +149,7 @@ namespace S7CommPlusDriver
                     };
                     break;
                 default:
-                    names += "." + node.Name;
+                    names = JoinName(names, node.Name);
                     accessIds += "." + String.Format("{0:X}", node.AccessId);
                     nextCrcPath = new List<S7CommPlusSymbolCrc.PathSegment>(crcPath)
                     {
