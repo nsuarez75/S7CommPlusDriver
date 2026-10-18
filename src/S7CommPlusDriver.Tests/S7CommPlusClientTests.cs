@@ -55,6 +55,45 @@ namespace S7CommPlusDriver.Tests
         }
 
         [Fact]
+        public async Task CancelledReadWaitsForTheRequestAndKeepsTheConnection()
+        {
+            using var inRead = new ManualResetEventSlim();
+            using var release = new ManualResetEventSlim();
+            var running = 0;
+            var overlapped = false;
+            var fake = new FakeS7CommPlusSession
+            {
+                ReadHandler = addresses =>
+                {
+                    if (Interlocked.Increment(ref running) > 1) overlapped = true;
+                    inRead.Set();
+                    release.Wait(TimeSpan.FromSeconds(5));
+                    Interlocked.Decrement(ref running);
+                    return (0, addresses.Select(_ => (object?)new ValueUDInt(7)).ToList(), addresses.Select(_ => 0UL).ToList());
+                },
+            };
+            var client = CreateClient(fake);
+            var tag = new PlcTagUDInt("DB.Value", new ItemAddress("8A0E0001.F"), Softdatatype.S7COMMP_SOFTDATATYPE_UDINT);
+            release.Set();
+            await client.ReadAsync(new[] { tag });
+            inRead.Reset();
+            release.Reset();
+            using var cts = new CancellationTokenSource();
+
+            var read = client.ReadAsync(new[] { tag }, cts.Token);
+            Assert.True(inRead.Wait(TimeSpan.FromSeconds(5)));
+            cts.Cancel();
+            await Task.Delay(100);
+            Assert.False(read.IsCompleted);
+            release.Set();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => read);
+            Assert.Equal(S7CommPlusConnectionState.Connected, client.State);
+            Assert.True((await client.ReadAsync(new[] { tag })).Items[0].IsSuccess);
+            Assert.False(overlapped);
+        }
+
+        [Fact]
         public async Task AggregateReadUsesElementAddressesAndPublishesOneArrayResult()
         {
             var fake = new FakeS7CommPlusSession

@@ -2281,9 +2281,18 @@ namespace S7CommPlusDriver
 
         private async Task<T> RunWithTimeoutAsync<T>(string operation, Func<T> func, TimeSpan timeout, CancellationToken cancellationToken)
         {
+            var work = Task.Run(func);
             try
             {
-                return await RuntimeCompatibility.WaitAsync(Task.Run(func), timeout, cancellationToken).ConfigureAwait(false);
+                return await RuntimeCompatibility.WaitAsync(work, timeout, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // PLC-Monitor: the caller gave up, the session did not fail. The request is already on the wire, so let it
+                // finish before the operation gate is released (or the next request would run on the session alongside it)
+                // and report a plain cancellation instead of a transient "function refused" that faults the connection.
+                await DrainCancelledOperationAsync(operation, work, timeout).ConfigureAwait(false);
+                throw;
             }
             catch (TimeoutException ex)
             {
@@ -2296,6 +2305,30 @@ namespace S7CommPlusDriver
             catch (Exception ex)
             {
                 throw new S7CommPlusConnectionException(operation, Endpoint, S7Consts.errCliFunctionRefused, true, $"{operation} failed for PLC {Endpoint}.", ex);
+            }
+        }
+
+        /// <summary>
+        /// PLC-Monitor: waits for an operation whose caller cancelled. Its result is dropped; only a failure that leaves the
+        /// session unusable (timeout or transient error) is reported.
+        /// </summary>
+        private async Task DrainCancelledOperationAsync<T>(string operation, Task<T> work, TimeSpan timeout)
+        {
+            try
+            {
+                await RuntimeCompatibility.WaitAsync(work, timeout, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (TimeoutException ex)
+            {
+                throw new S7CommPlusTimeoutException(operation, Endpoint, S7Consts.errCliJobTimeout, $"{operation} timed out after {timeout}.", ex);
+            }
+            catch (S7CommPlusException ex) when (ex.IsTransient)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                // The caller cancelled: a non-transient outcome of the abandoned operation does not matter.
             }
         }
 
