@@ -120,6 +120,13 @@ namespace S7CommPlusDriver
             return getPlcTagBySymbol(symbol);
         }
 
+        void IS7CommPlusSession.InvalidateMetadataCache()
+        {
+            dbInfoList = null;
+            typeInfoList.Clear();
+            unavailableAreaTypeInfo.Clear();
+        }
+
         int IS7CommPlusSession.GetCpuInfo(out S7CommPlusCpuInfo cpuInfo)
         {
             return Metadata.GetCpuInfo(out cpuInfo);

@@ -186,6 +186,13 @@ namespace S7CommPlusDriver.Tests
             return result.Error;
         }
 
+        public int InvalidateMetadataCacheCount { get; private set; }
+
+        public void InvalidateMetadataCache()
+        {
+            InvalidateMetadataCacheCount++;
+        }
+
         public PlcTag GetPlcTagBySymbol(string symbol)
         {
             return GetTagHandler?.Invoke(symbol) ?? PlcTags.TagFactory(symbol, new ItemAddress("8A0E0001.F"), Softdatatype.S7COMMP_SOFTDATATYPE_INT);

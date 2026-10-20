@@ -28,6 +28,12 @@ namespace S7CommPlusDriver
         /// <returns>A native driver error code, or zero when retrieval and parsing succeed.</returns>
         int GetSymbolComments(uint relationId, out S7CommPlusSymbolCommentCatalog comments);
         PlcTag GetPlcTagBySymbol(string symbol);
+
+        /// <summary>
+        /// PLC-Monitor: forgets the DB list and type information buffered for symbol resolution, so the next lookup reads the
+        /// current PLC program (a symbol added by a download after connecting is otherwise not found until reconnecting).
+        /// </summary>
+        void InvalidateMetadataCache();
         int GetCpuInfo(out S7CommPlusCpuInfo cpuInfo);
         int GetOnlineCapabilities(out byte[] capabilities);
         int GetCpuState(out S7CommPlusCpuState cpuState);

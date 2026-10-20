@@ -396,6 +396,8 @@ namespace S7CommPlusDriver
         /// Normal disconnects and reconnects intentionally retain the catalog because access metadata remains valid while the PLC
         /// program is unchanged. Call this method when a program-structure hash changes, before rebuilding cached <see cref="PlcTag"/>
         /// accessors. The next <see cref="GetTagsBySymbolsAsync(IEnumerable{string}, CancellationToken)"/> call then refreshes the catalog.
+        /// PLC-Monitor: it also drops the DB list and type information the session buffers for
+        /// <see cref="GetTagBySymbolAsync(string, CancellationToken)"/>, so symbols added to the program are found without reconnecting.
         /// </remarks>
         public async Task InvalidateSymbolCatalogAsync(CancellationToken cancellationToken = default)
         {
@@ -404,6 +406,7 @@ namespace S7CommPlusDriver
             {
                 ThrowIfDisposed();
                 _symbolCatalog = null;
+                _session?.InvalidateMetadataCache();
             }
             finally
             {

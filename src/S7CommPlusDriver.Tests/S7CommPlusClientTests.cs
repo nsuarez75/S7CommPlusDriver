@@ -547,6 +547,8 @@ namespace S7CommPlusDriver.Tests
             await client.GetTagsBySymbolsAsync(new[] { "DB.Value" });
 
             Assert.Equal(2, fake.BrowseVariablesCount);
+            // The session's buffered DB list and type information (single-symbol resolution) are dropped too.
+            Assert.Equal(1, fake.InvalidateMetadataCacheCount);
         }
 
         /// <summary>Ensures the one-shot accessor-catalog API does not seed the client's retained full-symbol cache.</summary>
